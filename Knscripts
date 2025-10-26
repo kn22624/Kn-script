@@ -1,0 +1,268 @@
+-- Painel avançado atualizado (com botão "Open" fixo, limites ajustados, interface menor e mais clara)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ESTADO PADRÃO
+local state = {
+	guiOpen = true,
+	platformActive = false,
+	platformMoving = false,
+	platformSpeed = 10,
+	forceSpeedEnabled = false,
+	forceSpeedValue = 16,
+	forceJumpEnabled = false,
+	forceJumpValue = 50,
+	hitboxValue = 0,
+}
+
+-- LIMITES AJUSTADOS
+local MAX_SPEED = 25
+local MAX_JUMP = 70
+local MAX_HITBOX = 200
+
+-- GUI PRINCIPAL
+local gui = Instance.new("ScreenGui")
+gui.Name = "PainelAvancado"
+gui.ResetOnSpawn = false
+gui.Parent = PlayerGui
+
+-- BOTÃO OPEN (fica visível quando painel fechado)
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.new(0, 80, 0, 30)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+openButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+openButton.Font = Enum.Font.SourceSansBold
+openButton.TextSize = 14
+openButton.Text = "Open"
+openButton.Visible = false
+openButton.Parent = gui
+
+-- JANELA PRINCIPAL
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 340)
+frame.Position = UDim2.new(0.5, -150, 0.5, -170)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.1
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- METADE BRANCA SUAVE
+local halfWhite = Instance.new("Frame")
+halfWhite.Size = UDim2.new(0.5, 0, 1, 0)
+halfWhite.Position = UDim2.new(0.5, 0, 0, 0)
+halfWhite.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+halfWhite.BackgroundTransparency = 0.1
+halfWhite.Parent = frame
+
+-- TÍTULO E BOTÃO CLOSE
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -100, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 5)
+title.BackgroundTransparency = 1
+title.Text = "Painel Avançado"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 80, 0, 28)
+closeButton.Position = UDim2.new(1, -90, 0, 6)
+closeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 14
+closeButton.Text = "Closed"
+closeButton.Parent = frame
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -20, 1, -50)
+content.Position = UDim2.new(0, 10, 0, 40)
+content.BackgroundTransparency = 1
+content.Parent = frame
+
+-- FUNÇÃO CRIAR LINHA
+local function makeRow(y, text, default)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.55, 0, 0, 26)
+	label.Position = UDim2.new(0, 0, 0, y)
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.SourceSans
+	label.TextSize = 14
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = content
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(0.45, -5, 0, 26)
+	box.Position = UDim2.new(0.55, 5, 0, y)
+	box.Text = tostring(default)
+	box.ClearTextOnFocus = false
+	box.Font = Enum.Font.SourceSans
+	box.TextColor3 = Color3.fromRGB(0, 0, 0)
+	box.TextSize = 14
+	box.Parent = content
+	return box
+end
+
+-- CAMPOS DE CONTROLE
+local speedBox = makeRow(10, "Velocidade (1-25):", state.forceSpeedValue)
+local jumpBox = makeRow(40, "Pulo (1-70):", state.forceJumpValue)
+local hitBox = makeRow(70, "Hitbox (0-200):", state.hitboxValue)
+local platSpeedBox = makeRow(100, "Vel. Plataforma:", state.platformSpeed)
+
+-- BOTÕES
+local startPlatform = Instance.new("TextButton")
+startPlatform.Size = UDim2.new(1, 0, 0, 28)
+startPlatform.Position = UDim2.new(0, 0, 0, 140)
+startPlatform.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+startPlatform.TextColor3 = Color3.fromRGB(255, 255, 255)
+startPlatform.Text = "Ativar Plataforma"
+startPlatform.Parent = content
+
+local stopPlatform = startPlatform:Clone()
+stopPlatform.Text = "Desativar Plataforma"
+stopPlatform.Position = UDim2.new(0, 0, 0, 175)
+stopPlatform.Parent = content
+
+local applySpeed = startPlatform:Clone()
+applySpeed.Text = "Aplicar Velocidade"
+applySpeed.Position = UDim2.new(0, 0, 0, 210)
+applySpeed.Parent = content
+
+local applyJump = startPlatform:Clone()
+applyJump.Text = "Aplicar Pulo"
+applyJump.Position = UDim2.new(0, 0, 0, 245)
+applyJump.Parent = content
+
+local applyHitbox = startPlatform:Clone()
+applyHitbox.Text = "Aplicar Hitbox"
+applyHitbox.Position = UDim2.new(0, 0, 0, 280)
+applyHitbox.Parent = content
+
+-- FUNÇÕES PRINCIPAIS
+local platformPart
+local movingConn, enforceConn
+
+local function clamp(v, min, max)
+	return math.max(min, math.min(max, v))
+end
+
+local function getChar()
+	return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+end
+
+local function getHumanoid()
+	return getChar():FindFirstChildOfClass("Humanoid")
+end
+
+-- Aplicar Hitbox
+local function applyHitboxValue(v)
+	v = clamp(v, 0, MAX_HITBOX)
+	state.hitboxValue = v
+	local hrp = getChar():FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	if v == 0 then
+		hrp.Size = Vector3.new(2, 2, 1)
+		hrp.Transparency = 0
+	else
+		hrp.Size = Vector3.new(2 + v/10, 2 + v/10, 1 + v/10)
+		hrp.Color = Color3.fromRGB(255, 60, 60)
+		hrp.Transparency = 0.4
+	end
+end
+
+-- Criar Plataforma
+local function ensurePlatform()
+	if platformPart and platformPart.Parent then return platformPart end
+	local p = Instance.new("Part")
+	p.Size = Vector3.new(6, 1, 6)
+	p.Anchored = true
+	p.Color = Color3.fromRGB(150, 150, 255)
+	p.Material = Enum.Material.SmoothPlastic
+	p.Parent = workspace
+	platformPart = p
+	return p
+end
+
+local function startPlatformMove()
+	local p = ensurePlatform()
+	local hrp = getChar():FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	p.Position = hrp.Position - Vector3.new(0, hrp.Size.Y/2 + 0.6, 0)
+
+	if movingConn then movingConn:Disconnect() end
+	movingConn = RunService.Heartbeat:Connect(function(dt)
+		if not platformPart then return end
+		local s = clamp(tonumber(platSpeedBox.Text) or 0, 0, 25)
+		p.CFrame = p.CFrame + Vector3.new(0, s * dt, 0)
+	end)
+end
+
+local function stopPlatformMove()
+	if movingConn then movingConn:Disconnect() end
+	movingConn = nil
+end
+
+-- Forçar velocidade e pulo
+local function startEnforce()
+	if enforceConn then enforceConn:Disconnect() end
+	enforceConn = RunService.Heartbeat:Connect(function()
+		local hum = getHumanoid()
+		if not hum then return end
+		if state.forceSpeedEnabled then
+			hum.WalkSpeed = clamp(state.forceSpeedValue, 1, MAX_SPEED)
+		end
+		if state.forceJumpEnabled then
+			hum.UseJumpPower = true
+			hum.JumpPower = clamp(state.forceJumpValue, 1, MAX_JUMP)
+		end
+	end)
+end
+
+-- EVENTOS
+applySpeed.MouseButton1Click:Connect(function()
+	state.forceSpeedValue = clamp(tonumber(speedBox.Text) or 16, 1, MAX_SPEED)
+	state.forceSpeedEnabled = true
+	startEnforce()
+end)
+
+applyJump.MouseButton1Click:Connect(function()
+	state.forceJumpValue = clamp(tonumber(jumpBox.Text) or 50, 1, MAX_JUMP)
+	state.forceJumpEnabled = true
+	startEnforce()
+end)
+
+applyHitbox.MouseButton1Click:Connect(function()
+	applyHitboxValue(tonumber(hitBox.Text) or 0)
+end)
+
+startPlatform.MouseButton1Click:Connect(function()
+	startPlatformMove()
+end)
+
+stopPlatform.MouseButton1Click:Connect(function()
+	stopPlatformMove()
+	if platformPart then platformPart:Destroy() platformPart = nil end
+end)
+
+-- Fechar painel
+closeButton.MouseButton1Click:Connect(function()
+	frame.Visible = false
+	openButton.Visible = true
+end)
+
+-- Reabrir painel
+openButton.MouseButton1Click:Connect(function()
+	frame.Visible = true
+	openButton.Visible = false
+end)
+
+print("[Painel Avançado] Script iniciado com botão Open/Closed e limites ajustados.")
